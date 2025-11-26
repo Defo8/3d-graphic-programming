@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.15)
 project(Graphics3DCode CXX C)
 
 add_compile_definitions(ROOT_DIR="${PROJECT_SOURCE_DIR}")
+add_compile_definitions(GLM_ENABLE_EXPERIMENTAL)
 
 include(FetchContent)
 include(ExternalProject)
