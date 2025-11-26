@@ -11,6 +11,8 @@
 
 #include "Application/utils.h"
 
+const GLsizei VERTEX_COUNT = 9;
+
 void SimpleShapeApplication::init() {
     // A utility function that reads the shader sources, compiles them and creates the program object
     // As everything in OpenGL we reference program by an integer "handle".
@@ -27,7 +29,16 @@ void SimpleShapeApplication::init() {
     std::vector<GLfloat> vertices = {
             -0.5f, 0.0f, 0.0f,
             0.5f, 0.0f, 0.0f,
-            0.0f, 0.5f, 0.0f};
+            0.0f, 0.5f, 0.0f,
+
+            -0.5f, -0.5f, 0.0f, 
+            0.5f, -0.5f, 0.0f,   
+            -0.5f,  0.0f, 0.0f,   
+
+            -0.5f,  0.0f, 0.0f,   
+            0.5f, -0.5f, 0.0f,   
+            0.5f,  0.0f, 0.0f    
+        };
 
     // Generating the buffer and loading the vertex data into it.
     GLuint v_buffer_handle;
@@ -66,6 +77,6 @@ void SimpleShapeApplication::init() {
 void SimpleShapeApplication::frame() {
     // Binding the VAO will setup all the required vertex buffers.
     glBindVertexArray(vao_);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT);
     glBindVertexArray(0);
 }

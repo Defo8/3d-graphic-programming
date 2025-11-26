@@ -29,7 +29,17 @@ Termin oddania: 05.12.21 23:59 2pkt.
     We should again see the red triangle. We are now ready to play with the code. 
 
 
-4. Start by finding the place in `app.cpp` file where positions of vertices are stored. Change the location of the vertices.  What happens when one of the coordinates _x,y_ is outside the range [-1,1]? What if  _z_ coordinate is outside this range?
+4. Start by finding the place in `app.cpp` file where positions of vertices are stored. Change the location of the vertices.  
+
+What happens when one of the coordinates _x,y_ is outside the range [-1,1]? 
+
+Answer: Then this vertex will be outside the screen-aligned view and that will cause the part of the image to be clipped.
+
+What if  _z_ coordinate is outside this range?
+
+Answer: Then the part of the image will dissapear behind the boundry of the view (thie vertecies will be behind the near or beyond the far plane). This means that the same as when vertices were out of x,y ([-1, 1]) boundries image was clipped the same is happening here but in third diemension. 
+
+
 5. Add one more triangle. Rember to edit draw command in the `frame` function. 
 6. Draw a  house 
  by adding beneath original triangle a rectangle of width 1.0 and height 0.5. This should be your final version that you should submit to repository.
