@@ -40,7 +40,7 @@ namespace xe {
         auto n_indices = 3 * smesh.faces.size();
 
 
-        uint n_floats_per_vertex = 3;
+        glm::uint n_floats_per_vertex = 3;
         for (auto &&t: smesh.has_texcoords) {
             if (t)
                 n_floats_per_vertex += 2;
