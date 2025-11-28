@@ -12,6 +12,9 @@
 #include "Application/utils.h"
 
 const GLsizei VERTEX_COUNT = 9;
+const GLuint POSITION_ATTR = 0;
+const GLuint COLOR_ATTR = 1;
+const GLuint BUFFER_N = 1;
 
 void SimpleShapeApplication::init() {
     // A utility function that reads the shader sources, compiles them and creates the program object
@@ -27,22 +30,22 @@ void SimpleShapeApplication::init() {
 
     // A vector containing the x,y,z vertex coordinates for the triangle.
     std::vector<GLfloat> vertices = {
-            -0.5f, 0.0f, 0.0f,
-            0.5f, 0.0f, 0.0f,
-            0.0f, 0.5f, 0.0f,
+            -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+            0.5f, 0.0f, 0.0f,  1.0f, 0.0f, 0.0f, 
+            0.0f, 0.5f, 0.0f,  1.0f, 0.0f, 0.0f,          
 
-            -0.5f, -0.5f, 0.0f, 
-            0.5f, -0.5f, 0.0f,   
-            -0.5f,  0.0f, 0.0f,   
+            -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
+            0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f, 
+            -0.5f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f,  
 
-            -0.5f,  0.0f, 0.0f,   
-            0.5f, -0.5f, 0.0f,   
-            0.5f,  0.0f, 0.0f    
-        };
+            -0.5f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f,  
+            0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f, 
+            0.5f,  0.0f, 0.0f,  0.0f, 1.0f, 0.0f    
+        }; 
 
     // Generating the buffer and loading the vertex data into it.
     GLuint v_buffer_handle;
-    glGenBuffers(1, &v_buffer_handle);
+    glGenBuffers(BUFFER_N, &v_buffer_handle);
     OGL_CALL(glBindBuffer(GL_ARRAY_BUFFER, v_buffer_handle));
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), vertices.data(), GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -54,9 +57,13 @@ void SimpleShapeApplication::init() {
     glBindBuffer(GL_ARRAY_BUFFER, v_buffer_handle);
 
     // This indicates that the data for attribute 0 should be read from a vertex buffer.
-    glEnableVertexAttribArray(0);
-    // and this specifies how the data is layout in the buffer.
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), reinterpret_cast<GLvoid *>(0));
+    glEnableVertexAttribArray(POSITION_ATTR);
+    // and this specifies how the VERTEX data is layout in the buffer.
+    glVertexAttribPointer(POSITION_ATTR, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), reinterpret_cast<GLvoid *>(0));
+
+    glEnableVertexAttribArray(COLOR_ATTR);
+    // and this specifies how the COLOR data is layout in the buffer.
+    glVertexAttribPointer(COLOR_ATTR, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), reinterpret_cast<GLvoid *>(3 * sizeof(GLfloat)));
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
