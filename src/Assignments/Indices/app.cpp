@@ -35,13 +35,23 @@ void SimpleShapeApplication::init() {
             0.0f, 0.5f, 0.0f,  1.0f, 0.0f, 0.0f,          
 
             -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-            0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f, 
-            -0.5f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f,  
+            0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
 
-            -0.5f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f,  
-            0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f, 
-            0.5f,  0.0f, 0.0f,  0.0f, 1.0f, 0.0f    
+            -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+            0.5f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f, 
         }; 
+
+    std::vector<GLushort> indices = {
+            0, 1, 2,  
+            3, 4, 5,  
+            5, 4, 6   
+        };
+
+    GLuint index_buffer_handle;    
+    glGenBuffers(BUFFER_N, &index_buffer_handle); 
+    OGL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_handle));
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), indices.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     // Generating the buffer and loading the vertex data into it.
     GLuint v_buffer_handle;
@@ -54,6 +64,7 @@ void SimpleShapeApplication::init() {
     // the state of all vertex buffers needed for rendering
     glGenVertexArrays(1, &vao_);
     glBindVertexArray(vao_);
+    OGL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_handle));
     glBindBuffer(GL_ARRAY_BUFFER, v_buffer_handle);
 
     // This indicates that the data for attribute 0 should be read from a vertex buffer.
@@ -84,6 +95,6 @@ void SimpleShapeApplication::init() {
 void SimpleShapeApplication::frame() {
     // Binding the VAO will setup all the required vertex buffers.
     glBindVertexArray(vao_);
-    glDrawArrays(GL_TRIANGLES, 0, VERTEX_COUNT);
+    glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_SHORT, nullptr);
     glBindVertexArray(0);
 }
