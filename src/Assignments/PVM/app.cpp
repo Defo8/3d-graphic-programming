@@ -11,6 +11,7 @@
 #include <cmath>
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
+#include <glm/gtc/matrix_transform.hpp> 
 
 #include "Application/utils.h"
 
@@ -29,7 +30,6 @@ void SimpleShapeApplication::init() {
         exit(-1);
     }
 
-    // A vector containing the x,y,z vertex coordinates for the triangle.
     std::vector<GLfloat> vertices = {
             -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
             0.5f, 0.0f, 0.0f,  1.0f, 0.0f, 0.0f,
@@ -49,27 +49,32 @@ void SimpleShapeApplication::init() {
         };
 
     #pragma region --- Transformations uniform block setup (std140 layout, binding=1) ---
-    // Total: 48 bytes (12 floats)
+    
+    auto[w, h] = frame_buffer_size();
+    GLfloat aspect = (GLfloat)w / (GLfloat)h;
+    GLfloat fov = glm::radians(45.0f); // Pole widzenia
+    GLfloat near_plane = 0.1f;
+    GLfloat far_plane = 100.0f;
+    glm::mat4 Projection = glm::perspective(fov, aspect, near_plane, far_plane);
 
-    GLfloat theta = 1.0f * glm::pi<GLfloat>() / 4.0f;
-    GLfloat cs = std::cos(theta);
-    GLfloat ss = std::sin(theta);
-    glm::mat2 rotation(cs, ss, -ss, cs);
-    glm::vec2 translation(0.0f, 0.0f);
-    glm::vec2 scale_vec(1.5f, 1.5f);
+    glm::vec3 camera_pos   = glm::vec3(0.0f, 0.0f, 3.0f);
+    glm::vec3 camera_target= glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 up_vector    = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::mat4 View = glm::lookAt(camera_pos, camera_target, up_vector);
+
+    glm::mat4 Model = glm::mat4(1.0f);
+
+    glm::mat4 PVM = Projection * View * Model;
 
     GLuint uniform_buffer_Transformation_handle;
     glGenBuffers(1, &uniform_buffer_Transformation_handle);
     OGL_CALL(glBindBuffer(GL_UNIFORM_BUFFER, uniform_buffer_Transformation_handle));
-    glBufferData(GL_UNIFORM_BUFFER, 12 * sizeof(GLfloat), nullptr, GL_STATIC_DRAW);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, 2 * sizeof(GLfloat), &scale_vec);
-    glBufferSubData(GL_UNIFORM_BUFFER, 2 * sizeof(GLfloat), 2 * sizeof(GLfloat), &translation);
-    glBufferSubData(GL_UNIFORM_BUFFER, 4 * sizeof(GLfloat), 2 * sizeof(GLfloat), &rotation[0]);
-    glBufferSubData(GL_UNIFORM_BUFFER, 8 * sizeof(GLfloat), 2 * sizeof(GLfloat), &rotation[1]);
+    
+    //(mat4 to 16 floatów, czyli 64 bajty)
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), &PVM[0], GL_STATIC_DRAW);    
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, uniform_buffer_Transformation_handle);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    #pragma endregion --- Transformations uniform block setup (std140 layout, binding=1) ---
+    #pragma endregion 
 
     #pragma region --- Modifier uniform block setup (std140 layout, binding=0) ---
     
@@ -131,8 +136,8 @@ void SimpleShapeApplication::init() {
     // I suggest not to use white or black for better debuging.
     glClearColor(0.81f, 0.81f, 0.8f, 1.0f);
 
-    // This setups an OpenGL vieport of the size of the whole rendering window.
-    auto[w, h] = frame_buffer_size();
+    // Wywołanie frame_buffer_size ponownie, aby ustawić viewport
+    // (wcześniej użyliśmy go tylko do obliczenia Aspect Ratio)
     glViewport(0, 0, w, h);
 
     glUseProgram(program);
