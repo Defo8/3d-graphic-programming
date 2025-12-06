@@ -7,14 +7,15 @@
 #include <iostream>
 #include <vector>
 #include <tuple>
-#include <cstring> 
+#include <cstring>
+#include <cmath>
+#include <glm/glm.hpp>
+#include <glm/gtc/constants.hpp>
 
 #include "Application/utils.h"
 
-const GLsizei VERTEX_COUNT = 9;
 const GLuint POSITION_ATTR = 0;
 const GLuint COLOR_ATTR = 1;
-const GLuint BUFFER_N = 1;
 
 void SimpleShapeApplication::init() {
     // A utility function that reads the shader sources, compiles them and creates the program object
@@ -47,18 +48,64 @@ void SimpleShapeApplication::init() {
             5, 4, 6   
         };
 
+    #pragma region --- Transformations uniform block setup (std140 layout, binding=1) ---
+    // Total: 48 bytes (12 floats)
+
+    GLfloat theta = 1.0f * glm::pi<GLfloat>() / 4.0f;
+    GLfloat cs = std::cos(theta);
+    GLfloat ss = std::sin(theta);
+    glm::mat2 rotation(cs, ss, -ss, cs);
+    glm::vec2 translation(0.0f, 0.0f);
+    glm::vec2 scale_vec(1.5f, 1.5f);
+
+    GLuint uniform_buffer_Transformation_handle;
+    glGenBuffers(1, &uniform_buffer_Transformation_handle);
+    OGL_CALL(glBindBuffer(GL_UNIFORM_BUFFER, uniform_buffer_Transformation_handle));
+    glBufferData(GL_UNIFORM_BUFFER, 12 * sizeof(GLfloat), nullptr, GL_STATIC_DRAW);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, 2 * sizeof(GLfloat), &scale_vec);
+    glBufferSubData(GL_UNIFORM_BUFFER, 2 * sizeof(GLfloat), 2 * sizeof(GLfloat), &translation);
+    glBufferSubData(GL_UNIFORM_BUFFER, 4 * sizeof(GLfloat), 2 * sizeof(GLfloat), &rotation[0]);
+    glBufferSubData(GL_UNIFORM_BUFFER, 8 * sizeof(GLfloat), 2 * sizeof(GLfloat), &rotation[1]);
+    glBindBufferBase(GL_UNIFORM_BUFFER, 1, uniform_buffer_Transformation_handle);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    #pragma endregion --- Transformations uniform block setup (std140 layout, binding=1) ---
+
+    #pragma region --- Modifier uniform block setup (std140 layout, binding=0) ---
+    
+    float strength = 0.8f;
+    float color[3] = {1.0f, 1.0f, 1.0f};
+
+    GLuint uniform_buffer_Modifier_handle;
+    glGenBuffers(1, &uniform_buffer_Modifier_handle);
+    OGL_CALL(glBindBuffer(GL_UNIFORM_BUFFER, uniform_buffer_Modifier_handle));
+    glBufferData(GL_UNIFORM_BUFFER, 8 * sizeof(GLfloat), nullptr, GL_STATIC_DRAW);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(GLfloat), &strength); 
+    glBufferSubData(GL_UNIFORM_BUFFER, 4 * sizeof(GLfloat), 3 * sizeof(GLfloat), &color); 
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniform_buffer_Modifier_handle);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    #pragma endregion
+
+    #pragma region --- Index buffer setup ---
+
     GLuint index_buffer_handle;    
-    glGenBuffers(BUFFER_N, &index_buffer_handle); 
+    glGenBuffers(1, &index_buffer_handle); 
     OGL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_handle));
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), indices.data(), GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    // Generating the buffer and loading the vertex data into it.
+    #pragma endregion
+    
+    #pragma region --- Vertex Array Object (VAO) setup ---
+
     GLuint v_buffer_handle;
-    glGenBuffers(BUFFER_N, &v_buffer_handle);
+    glGenBuffers(1, &v_buffer_handle);
     OGL_CALL(glBindBuffer(GL_ARRAY_BUFFER, v_buffer_handle));
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), vertices.data(), GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    #pragma endregion
 
     // This setups a Vertex Array Object (VAO) that  encapsulates
     // the state of all vertex buffers needed for rendering

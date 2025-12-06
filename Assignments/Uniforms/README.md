@@ -89,4 +89,6 @@ parameters of this transformation will be passed to vertex shader via  uniform i
    It is best to add the transformations one by  one.   Start with translation, then scale and finally rotation. Are the 
    parenthesis around  `scale*a_vertex_position.xy` really needed? Why? 
 
+   Answer: Parentheses are here due to non-commutativity of vectors/matrixes multiplication. Even that C++ operations are left-assciative and we have correct order of variables (we will avoid a scenario that adding translation will be before other actions) still rotation * scale * position will give different result than first doing: scaledposition = scale * positon and then doing final = rotation * scaledpostion.
+
 
