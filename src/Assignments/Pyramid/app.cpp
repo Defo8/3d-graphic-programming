@@ -31,21 +31,25 @@ void SimpleShapeApplication::init() {
     }
 
     std::vector<GLfloat> vertices = {
-            -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-            0.5f, 0.0f, 0.0f,  1.0f, 0.0f, 0.0f,
-            0.0f, 0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
+            -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
+            0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
+            0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
+            -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
 
-            -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-            0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
-
-            -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-            0.5f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f, 
+            0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f,
         }; 
 
     std::vector<GLushort> indices = {
             0, 1, 2,  
-            3, 4, 5,  
-            5, 4, 6   
+            0, 2, 3,  
+            
+            0, 4, 1,
+            
+            0, 3, 4,
+
+            2, 4, 3,
+
+            1, 4, 2
         };
 
     #pragma region --- Transformations uniform block setup (std140 layout, binding=1) ---
@@ -57,9 +61,9 @@ void SimpleShapeApplication::init() {
     GLfloat far_plane = 100.0f;
     glm::mat4 Projection = glm::perspective(fov, aspect, near_plane, far_plane);
 
-    glm::vec3 camera_pos   = glm::vec3(0.0f, 0.0f, 3.0f);
-    glm::vec3 camera_target= glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::vec3 up_vector    = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::vec3 camera_pos    = glm::vec3(0.0f, -1.0f, 3.0f); 
+    glm::vec3 camera_target = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 up_vector     = glm::vec3(0.0f, 1.0f, 0.0f);
     glm::mat4 View = glm::lookAt(camera_pos, camera_target, up_vector);
 
     glm::mat4 Model = glm::mat4(1.0f);
@@ -141,12 +145,15 @@ void SimpleShapeApplication::init() {
     glViewport(0, 0, w, h);
 
     glUseProgram(program);
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
 }
 
 //This functions is called every frame and does the actual rendering.
 void SimpleShapeApplication::frame() {
     // Binding the VAO will setup all the required vertex buffers.
     glBindVertexArray(vao_);
-    glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_SHORT, nullptr);
+    glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_SHORT, nullptr);
     glBindVertexArray(0);
 }
