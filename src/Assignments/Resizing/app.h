@@ -10,6 +10,7 @@
 #include "Application/utils.h"
 
 #include "glad/gl.h"
+#include <glm/glm.hpp>
 
 class SimpleShapeApplication : public xe::Application
 {
@@ -20,6 +21,18 @@ public:
 
     void frame() override;
 
+    void framebuffer_resize_callback(int w, int h) override;
+
 private:
     GLuint vao_;
+
+    float fov_;
+    float aspect_;
+    float near_;
+    float far_;
+
+    glm::mat4 P_;
+    glm::mat4 V_;
+    
+    GLuint u_pvm_buffer_;
 };

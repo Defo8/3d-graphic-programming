@@ -19,8 +19,6 @@ const GLuint POSITION_ATTR = 0;
 const GLuint COLOR_ATTR = 1;
 
 void SimpleShapeApplication::init() {
-    // A utility function that reads the shader sources, compiles them and creates the program object
-    // As everything in OpenGL we reference program by an integer "handle".
     auto program = xe::utils::create_program(
             {{GL_VERTEX_SHADER,   std::string(PROJECT_DIR) + "/shaders/base_vs.glsl"},
              {GL_FRAGMENT_SHADER, std::string(PROJECT_DIR) + "/shaders/base_fs.glsl"}});
@@ -55,28 +53,23 @@ void SimpleShapeApplication::init() {
     #pragma region --- Transformations uniform block setup (std140 layout, binding=1) ---
     
     auto[w, h] = frame_buffer_size();
-    GLfloat aspect = (GLfloat)w / (GLfloat)h;
-    GLfloat fov = glm::radians(45.0f); // Pole widzenia
-    GLfloat near_plane = 0.1f;
-    GLfloat far_plane = 100.0f;
-    glm::mat4 Projection = glm::perspective(fov, aspect, near_plane, far_plane);
+    aspect_ = (float)w / (float)h;
+    fov_ = glm::radians(45.0f);
+    near_ = 0.1f;
+    far_ = 100.0f;
 
+    P_ = glm::perspective(fov_, aspect_, near_, far_);
+    
     glm::vec3 camera_pos    = glm::vec3(0.0f, -1.0f, 3.0f); 
     glm::vec3 camera_target = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 up_vector     = glm::vec3(0.0f, 1.0f, 0.0f);
-    glm::mat4 View = glm::lookAt(camera_pos, camera_target, up_vector);
+    V_ = glm::lookAt(camera_pos, camera_target, up_vector);
 
-    glm::mat4 Model = glm::mat4(1.0f);
+    glGenBuffers(1, &u_pvm_buffer_);
+    OGL_CALL(glBindBuffer(GL_UNIFORM_BUFFER, u_pvm_buffer_));
 
-    glm::mat4 PVM = Projection * View * Model;
-
-    GLuint uniform_buffer_Transformation_handle;
-    glGenBuffers(1, &uniform_buffer_Transformation_handle);
-    OGL_CALL(glBindBuffer(GL_UNIFORM_BUFFER, uniform_buffer_Transformation_handle));
-    
-    //(mat4 to 16 floatów, czyli 64 bajty)
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), &PVM[0], GL_STATIC_DRAW);    
-    glBindBufferBase(GL_UNIFORM_BUFFER, 1, uniform_buffer_Transformation_handle);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), nullptr, GL_STATIC_DRAW);    
+    glBindBufferBase(GL_UNIFORM_BUFFER, 1, u_pvm_buffer_);
 
     #pragma endregion 
 
@@ -84,7 +77,6 @@ void SimpleShapeApplication::init() {
     
     float strength = 0.8f;
     float color[3] = {1.0f, 1.0f, 1.0f};
-
     GLuint uniform_buffer_Modifier_handle;
     glGenBuffers(1, &uniform_buffer_Modifier_handle);
     OGL_CALL(glBindBuffer(GL_UNIFORM_BUFFER, uniform_buffer_Modifier_handle));
@@ -116,44 +108,41 @@ void SimpleShapeApplication::init() {
 
     #pragma endregion
 
-    // This setups a Vertex Array Object (VAO) that  encapsulates
-    // the state of all vertex buffers needed for rendering
     glGenVertexArrays(1, &vao_);
     glBindVertexArray(vao_);
     OGL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_handle));
     glBindBuffer(GL_ARRAY_BUFFER, v_buffer_handle);
-
-    // This indicates that the data for attribute 0 should be read from a vertex buffer.
     glEnableVertexAttribArray(POSITION_ATTR);
-    // and this specifies how the VERTEX data is layout in the buffer.
     glVertexAttribPointer(POSITION_ATTR, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), reinterpret_cast<GLvoid *>(0));
-
     glEnableVertexAttribArray(COLOR_ATTR);
-    // and this specifies how the COLOR data is layout in the buffer.
     glVertexAttribPointer(COLOR_ATTR, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), reinterpret_cast<GLvoid *>(3 * sizeof(GLfloat)));
-
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-    //end of vao "recording"
 
-    // Setting the background color of the rendering window,
-    // I suggest not to use white or black for better debuging.
     glClearColor(0.81f, 0.81f, 0.8f, 1.0f);
-
-    // Wywołanie frame_buffer_size ponownie, aby ustawić viewport
-    // (wcześniej użyliśmy go tylko do obliczenia Aspect Ratio)
     glViewport(0, 0, w, h);
-
     glUseProgram(program);
-
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 }
 
 //This functions is called every frame and does the actual rendering.
 void SimpleShapeApplication::frame() {
-    // Binding the VAO will setup all the required vertex buffers.
+    glm::mat4 Model = glm::mat4(1.0f); 
+    auto PVM = P_ * V_ * Model;
+
+    glBindBuffer(GL_UNIFORM_BUFFER, u_pvm_buffer_);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &PVM[0]);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
     glBindVertexArray(vao_);
     glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_SHORT, nullptr);
     glBindVertexArray(0);
+}
+
+void SimpleShapeApplication::framebuffer_resize_callback(int w, int h) {
+    Application::framebuffer_resize_callback(w, h);
+    glViewport(0, 0, w, h); 
+    aspect_ = (float) w / h;
+    P_ = glm::perspective(fov_, aspect_, near_, far_);
 }
