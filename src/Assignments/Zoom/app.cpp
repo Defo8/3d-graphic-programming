@@ -34,7 +34,7 @@ void SimpleShapeApplication::init() {
             0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
             -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
 
-            0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
         }; 
 
     std::vector<GLushort> indices = {
@@ -52,18 +52,18 @@ void SimpleShapeApplication::init() {
 
     #pragma region --- Transformations uniform block setup (std140 layout, binding=1) ---
     
+    set_camera(new Camera);
     auto[w, h] = frame_buffer_size();
-    aspect_ = (float)w / (float)h;
-    fov_ = glm::radians(45.0f);
-    near_ = 0.1f;
-    far_ = 100.0f;
-
-    P_ = glm::perspective(fov_, aspect_, near_, far_);
+    GLfloat aspect_ = (float)w / (float)h;
+    GLfloat fov_ = glm::radians(45.0f);
+    GLfloat near_ = 0.1f;
+    GLfloat far_ = 100.0f;
+    camera_->perspective(fov_, aspect_, near_, far_);
     
     glm::vec3 camera_pos    = glm::vec3(0.0f, -1.0f, 3.0f); 
     glm::vec3 camera_target = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 up_vector     = glm::vec3(0.0f, 1.0f, 0.0f);
-    V_ = glm::lookAt(camera_pos, camera_target, up_vector);
+    camera_->look_at(camera_pos, camera_target, up_vector);
 
     glGenBuffers(1, &u_pvm_buffer_);
     OGL_CALL(glBindBuffer(GL_UNIFORM_BUFFER, u_pvm_buffer_));
@@ -128,8 +128,12 @@ void SimpleShapeApplication::init() {
 
 //This functions is called every frame and does the actual rendering.
 void SimpleShapeApplication::frame() {
-    glm::mat4 Model = glm::mat4(1.0f); 
-    auto PVM = P_ * V_ * Model;
+
+    glm::mat4 M_ = glm::mat4(1.0f); 
+    auto P_ = camera_->projection();
+    auto V_ = camera_->view();
+
+    auto PVM = P_ * V_ * M_;
 
     glBindBuffer(GL_UNIFORM_BUFFER, u_pvm_buffer_);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &PVM[0]);
@@ -143,6 +147,13 @@ void SimpleShapeApplication::frame() {
 void SimpleShapeApplication::framebuffer_resize_callback(int w, int h) {
     Application::framebuffer_resize_callback(w, h);
     glViewport(0, 0, w, h); 
-    aspect_ = (float) w / h;
-    P_ = glm::perspective(fov_, aspect_, near_, far_);
+
+   if (camera_) {
+        camera_->set_aspect((float) w / h);
+    }
+}
+
+void SimpleShapeApplication::scroll_callback(double xoffset, double yoffset) {
+    Application::scroll_callback(xoffset, yoffset);
+    camera()->zoom(yoffset / 30.0f);
 }
