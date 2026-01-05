@@ -8,6 +8,7 @@
 
 #include "Application/application.h"
 #include "Application/utils.h"
+#include "../Engine/Mesh.h"
 #include "camera.h"
 #include "camera_controler.h"
 
@@ -61,6 +62,10 @@ public:
         }
     }
 
+    void add_submesh(xe::Mesh *mesh) {
+        meshes_.push_back(mesh);
+    }
+
 private:
     GLuint vao_;
     
@@ -69,4 +74,6 @@ private:
     Camera *camera_;
 
     CameraControler *controler_;
+
+    std::vector<xe::Mesh*> meshes_; 
 };

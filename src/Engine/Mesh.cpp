@@ -8,15 +8,20 @@
 
 void xe::Mesh::draw() const {
     glBindVertexArray(vao_);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, i_buffer_);
-    for (auto i = 0; i < submeshes_.size(); i++) {
-        glDrawElements(GL_TRIANGLES, submeshes_[i].count(), GL_UNSIGNED_SHORT,
-                       reinterpret_cast<void *>(sizeof(GLushort) * submeshes_[i].start));
-    }
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
-    glBindVertexArray(0u);
-}
+    for (size_t i = 0; i < submeshes_.size(); ++i) {
+        if (materialas_.size() > i && materialas_[i]) {
+            materialas_[i]->bind();
+        }
 
+        glDrawElements(GL_TRIANGLES, submeshes_[i].count(), GL_UNSIGNED_SHORT,
+                        reinterpret_cast<void *>(sizeof(GLushort) * submeshes_[i].start));
+
+        if (materialas_.size() > i && materialas_[i]) {
+            materialas_[i]->unbind();
+        }
+    }
+    glBindVertexArray(0);
+}
 void xe::Mesh::vertex_attrib_pointer(GLuint index, GLuint size, GLenum type, GLsizei stride, GLsizei offset) {
     glBindVertexArray(vao_);
     glBindBuffer(GL_ARRAY_BUFFER, v_buffer_);
@@ -57,8 +62,7 @@ void xe::Mesh::allocate_vertex_buffer(size_t size, GLenum hint) {
     glBindBuffer(GL_ARRAY_BUFFER, 0u);
 }
 
-void xe::Mesh::
-load_vertices(size_t offset, size_t size, void *data) {
+void xe::Mesh::load_vertices(size_t offset, size_t size, void *data) {
     glBindBuffer(GL_ARRAY_BUFFER, v_buffer_);
     glBufferSubData(GL_ARRAY_BUFFER, offset, size, data);
     glBindBuffer(GL_ARRAY_BUFFER, 0u);

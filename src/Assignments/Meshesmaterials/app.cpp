@@ -14,11 +14,14 @@
 #include <glm/gtc/matrix_transform.hpp> 
 
 #include "Application/utils.h"
+#include "../Engine/Material.h"
 
 const GLuint POSITION_ATTR = 0;
 const GLuint COLOR_ATTR = 1;
 
 void SimpleShapeApplication::init() {
+    xe::ColorMaterial::init();
+    
     auto program = xe::utils::create_program(
             {{GL_VERTEX_SHADER,   std::string(PROJECT_DIR) + "/shaders/base_vs.glsl"},
              {GL_FRAGMENT_SHADER, std::string(PROJECT_DIR) + "/shaders/base_fs.glsl"}});
@@ -29,13 +32,12 @@ void SimpleShapeApplication::init() {
     }
 
     std::vector<GLfloat> vertices = {
-            -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-            0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-            0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-            -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-
-            0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
-        }; 
+        -0.5f, 0.5f, 0.0f,
+        0.5f, 0.5f, 0.0f,
+        0.5f, -0.5f, 0.0f,
+        -0.5f, -0.5f, 0.0f,
+        0.0f, 0.0f, 1.0f
+    };
 
     std::vector<GLushort> indices = {
             0, 1, 2,  
@@ -49,8 +51,8 @@ void SimpleShapeApplication::init() {
 
             1, 4, 2
         };
-    
-    #pragma region --- Transformations uniform block setup (std140 layout, binding=1) ---
+
+    #pragma region --- Camera setup ---
     
     set_camera(new Camera);
     auto[w, h] = frame_buffer_size();
@@ -72,53 +74,38 @@ void SimpleShapeApplication::init() {
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, u_pvm_buffer_);
 
     set_controler(new CameraControler(camera()));
-    #pragma endregion 
-
-    #pragma region --- Modifier uniform block setup (std140 layout, binding=0) ---
-    
-    float strength = 0.8f;
-    float color[3] = {1.0f, 1.0f, 1.0f};
-    GLuint uniform_buffer_Modifier_handle;
-    glGenBuffers(1, &uniform_buffer_Modifier_handle);
-    OGL_CALL(glBindBuffer(GL_UNIFORM_BUFFER, uniform_buffer_Modifier_handle));
-    glBufferData(GL_UNIFORM_BUFFER, 8 * sizeof(GLfloat), nullptr, GL_STATIC_DRAW);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(GLfloat), &strength); 
-    glBufferSubData(GL_UNIFORM_BUFFER, 4 * sizeof(GLfloat), 3 * sizeof(GLfloat), &color); 
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniform_buffer_Modifier_handle);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     #pragma endregion
 
-    #pragma region --- Index buffer setup ---
+    #pragma region --- Pyramid mesh setup ---
+    auto pyramid = new xe::Mesh;
 
-    GLuint index_buffer_handle;    
-    glGenBuffers(1, &index_buffer_handle); 
-    OGL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_handle));
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), indices.data(), GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    // VERTEX buffer
+    pyramid->allocate_vertex_buffer(vertices.size() * sizeof(GLfloat), GL_STATIC_DRAW);
+    pyramid->load_vertices(0, vertices.size() * sizeof(GLfloat), vertices.data());
+    pyramid->vertex_attrib_pointer(POSITION_ATTR, 3, GL_FLOAT, 3 * sizeof(GLfloat), 0);
+
+    // INDEX buffer
+    pyramid->allocate_index_buffer(indices.size() * sizeof(GLushort), GL_STATIC_DRAW);
+    pyramid->load_indices(0, indices.size() * sizeof(GLushort), indices.data());
+
+    auto mat_red    = new xe::ColorMaterial(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+    auto mat_green  = new xe::ColorMaterial(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+    auto mat_blue   = new xe::ColorMaterial(glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
+    auto mat_yellow = new xe::ColorMaterial(glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
+    auto mat_cyan   = new xe::ColorMaterial(glm::vec4(0.0f, 1.0f, 1.0f, 1.0f));
+    auto mat_magenta= new xe::ColorMaterial(glm::vec4(1.0f, 0.0f, 1.0f, 1.0f));    
+
+    pyramid->add_submesh(0, 3, mat_red);      
+    pyramid->add_submesh(3, 6, mat_green);   
+    pyramid->add_submesh(6, 9, mat_blue);     
+    pyramid->add_submesh(9, 12, mat_yellow);  
+    pyramid->add_submesh(12, 15, mat_cyan); 
+    pyramid->add_submesh(15, 18, mat_magenta); 
+
+    add_submesh(pyramid);
 
     #pragma endregion
-    
-    #pragma region --- Vertex Array Object (VAO) setup ---
-
-    GLuint v_buffer_handle;
-    glGenBuffers(1, &v_buffer_handle);
-    OGL_CALL(glBindBuffer(GL_ARRAY_BUFFER, v_buffer_handle));
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), vertices.data(), GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    #pragma endregion
-
-    glGenVertexArrays(1, &vao_);
-    glBindVertexArray(vao_);
-    OGL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_handle));
-    glBindBuffer(GL_ARRAY_BUFFER, v_buffer_handle);
-    glEnableVertexAttribArray(POSITION_ATTR);
-    glVertexAttribPointer(POSITION_ATTR, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), reinterpret_cast<GLvoid *>(0));
-    glEnableVertexAttribArray(COLOR_ATTR);
-    glVertexAttribPointer(COLOR_ATTR, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), reinterpret_cast<GLvoid *>(3 * sizeof(GLfloat)));
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
 
     glClearColor(0.81f, 0.81f, 0.8f, 1.0f);
     glViewport(0, 0, w, h);
@@ -140,9 +127,8 @@ void SimpleShapeApplication::frame() {
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &PVM[0]);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-    glBindVertexArray(vao_);
-    glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_SHORT, nullptr);
-    glBindVertexArray(0);
+    for (auto m : meshes_)
+        m->draw();
 }
 
 void SimpleShapeApplication::framebuffer_resize_callback(int w, int h) {
