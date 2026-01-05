@@ -49,7 +49,7 @@ void SimpleShapeApplication::init() {
 
             1, 4, 2
         };
-
+    
     #pragma region --- Transformations uniform block setup (std140 layout, binding=1) ---
     
     set_camera(new Camera);
@@ -71,6 +71,7 @@ void SimpleShapeApplication::init() {
     glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), nullptr, GL_STATIC_DRAW);    
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, u_pvm_buffer_);
 
+    set_controler(new CameraControler(camera()));
     #pragma endregion 
 
     #pragma region --- Modifier uniform block setup (std140 layout, binding=0) ---
