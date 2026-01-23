@@ -18,11 +18,12 @@
 
 #include "../Engine/mesh_loader.h"
 
-const GLuint POSITION_ATTR = 0;
-const GLuint TEXCOORD_ATTR = 1;
+#include "../Engine/ColorMaterial.h"
+#include "../Engine/PhongMaterial.h"
 
 void SimpleShapeApplication::init() {
     xe::ColorMaterial::init();
+    xe::PhongMaterial::init();
     
     auto program = xe::utils::create_program(
             {{GL_VERTEX_SHADER,   std::string(PROJECT_DIR) + "/shaders/base_vs.glsl"},
@@ -49,21 +50,35 @@ void SimpleShapeApplication::init() {
     camera_->look_at(camera_pos, camera_target, up_vector);
 
     glGenBuffers(1, &u_pvm_buffer_);
-    OGL_CALL(glBindBuffer(GL_UNIFORM_BUFFER, u_pvm_buffer_));
+    glBindBuffer(GL_UNIFORM_BUFFER, u_pvm_buffer_);
 
-    glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), nullptr, GL_STATIC_DRAW);    
+    glBufferData(GL_UNIFORM_BUFFER, 3 * sizeof(glm::mat4), nullptr, GL_STATIC_DRAW);    
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, u_pvm_buffer_);
 
     set_controler(new CameraControler(camera()));
 
     #pragma endregion
 
+    #pragma region --- Lights setup ---
+    add_light(xe::PointLight(glm::vec3(0.0f, 0.0f, 0.3f), glm::vec3(1.0f, 1.0f, 1.0f), 1.0f, 1.0f));
+    add_ambient(glm::vec3(0.5f, 0.5f, 0.5f));
+
+    glGenBuffers(1, &u_light_buffer_);
+    glBindBuffer(GL_UNIFORM_BUFFER, u_light_buffer_);
+    
+    size_t light_buffer_size = sizeof(glm::vec3) + sizeof(unsigned int) + 24 * sizeof(xe::PointLight);
+    glBufferData(GL_UNIFORM_BUFFER, light_buffer_size, nullptr, GL_STATIC_DRAW);
+    glBindBufferBase(GL_UNIFORM_BUFFER, 2, u_light_buffer_);
+
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    #pragma endregion
+
     #pragma region --- Mesh setup ---
-    auto pyramid = xe::load_mesh_from_obj(std::string(ROOT_DIR) + "/Models/blue_marble.obj",
+    auto square = xe::load_mesh_from_obj(std::string(ROOT_DIR) + "/Models/square.obj",
                                           std::string(ROOT_DIR) + "/Models");
 
-    if (pyramid) {
-        add_submesh(pyramid);
+    if (square) {
+        add_submesh(square);
     } else {
         std::cerr << "Cannot load the mesh" << std::endl;
     }
@@ -79,15 +94,59 @@ void SimpleShapeApplication::init() {
 
 //This functions is called every frame and does the actual rendering.
 void SimpleShapeApplication::frame() {
-
-    glm::mat4 M_ = glm::mat4(1.0f); 
+    glm::mat4 M_ = glm::mat4(1.0f);
     auto P_ = camera_->projection();
     auto V_ = camera_->view();
 
     auto PVM = P_ * V_ * M_;
+    auto VM = V_ * M_;
+    
+    auto R = glm::mat3(VM);
+    auto N = glm::mat3(glm::cross(R[1], R[2]), glm::cross(R[2], R[0]), glm::cross(R[0], R[1]));
 
     glBindBuffer(GL_UNIFORM_BUFFER, u_pvm_buffer_);
+  
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &PVM[0]);
+    glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), &VM[0]);
+    
+    size_t offset_N = 2 * sizeof(glm::mat4);
+    glBufferSubData(GL_UNIFORM_BUFFER, offset_N, 3 * sizeof(float), &N[0]); 
+    glBufferSubData(GL_UNIFORM_BUFFER, offset_N + 4 * sizeof(float), 3 * sizeof(float), &N[1]);
+    glBufferSubData(GL_UNIFORM_BUFFER, offset_N + 8 * sizeof(float), 3 * sizeof(float), &N[2]);
+
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    auto V = camera_->view();
+    
+    for (auto &light : p_lights_) {
+        glm::vec4 pos_ws = glm::vec4(light.position_in_ws, 1.0f);
+        glm::vec4 pos_vs = V * pos_ws;
+        light.position_in_vs = glm::vec3(pos_vs);
+    }
+
+    glBindBuffer(GL_UNIFORM_BUFFER, u_light_buffer_);
+
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::vec4), &ambient_[0]); // + 16B (12 + 4 padding w formie ustawienia ambbientu jako vec4)
+    
+    unsigned int n_lights = p_lights_.size();
+    glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), sizeof(unsigned int), &n_lights); // + 16B (w sumie 32B)
+
+    // ambient   -> offset 0
+    // n_lights  -> offset 16 (bo ambient wyrównany do 16)
+    // p_light[] -> offset 32 (bo n_lights też ma 16 a więc 32 w sumie)
+    
+    size_t lights_offset = 2 * sizeof(glm::vec4);
+    for (const auto &light : p_lights_) {
+        glBufferSubData(GL_UNIFORM_BUFFER, lights_offset, sizeof(glm::vec4), &light.position_in_vs); // +16B
+        glBufferSubData(GL_UNIFORM_BUFFER, lights_offset + 16, sizeof(glm::vec4), &light.color); // +16B (32B w sumie)
+        glBufferSubData(GL_UNIFORM_BUFFER, lights_offset + 32, sizeof(float), &light.intensity); // +4B (36B w sumie)
+        glBufferSubData(GL_UNIFORM_BUFFER, lights_offset + 36, sizeof(float), &light.radius); // +4B (40B w sumie)
+
+        // W standardzie std140 struktura w tablicy musi mieć rozmiar będący wielokrotnością 16 (vec4).
+        // Nasze dane zajmują 40 bajtów (16+16+4+4), więc najbliższa wielokrotność 16 to 48.
+        lights_offset += 48; 
+    }
+    
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     for (auto m : meshes_)
