@@ -2,8 +2,11 @@
 
 layout(location=0) out vec4 vFragColor;
 
-layout(std140, binding=0) uniform Modifiers {
+layout(std140, binding=0) uniform Material {
     vec4  Kd;
+    vec4  Ka;
+    vec4  Ks;
+    float Ns; 
     bool use_map_Kd;
 };
 
@@ -34,6 +37,12 @@ void main() {
     vec3 view_pos = vertex_coords_in_vs;
 
     vec3 diffuse_light = vec3(0.0);
+    vec3 specular_light = vec3(0.0);
+
+    vec3 camera_pos = vec3(0.0);
+    vec3 view_dir = normalize(camera_pos - view_pos);
+
+    float Ns = 500.0; 
 
     for (int i = 0; i < int(n_p_lights); i++) {
         PointLight light = p_light[i];
@@ -41,10 +50,19 @@ void main() {
         vec3 light_dir = normalize(light.position_in_view_space - view_pos);
 
         float diff = max(dot(normal, light_dir), 0.0);
+        diffuse_light += diff * light.color;      
 
-        diffuse_light += diff * light.color ;
+        vec3 half_vector = normalize(light_dir + view_dir);
+        float specul = max(dot(normal, half_vector), 0.0);
+        specul = pow(specul, Ns);
+        specular_light += Ks.rgb * light.color * light.intensity * specul;
+    }
+
+    vec4 diff_color = Kd;
+    if (use_map_Kd) {
+        diff_color *= texture(map_Kd, vertex_texcoords);
     }
 
     vFragColor.a = Kd.a;
-    vFragColor.rgb = Kd.rgb * (ambient.rgb * 0.0 + diffuse_light);
+    vFragColor.rgb = Ka.rgb * ambient.rgb + diff_color.rgb * diffuse_light + specular_light;
 }
