@@ -15,6 +15,7 @@
 
 #include "Application/utils.h"
 #include "../Engine/Material.h"
+#include "../Engine/ColorMaterial.h"
 
 const GLuint POSITION_ATTR = 0;
 const GLuint COLOR_ATTR = 1;
